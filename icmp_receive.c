@@ -12,7 +12,6 @@ void print_as_bytes (unsigned char* buff, ssize_t length)
 		printf ("%.2x ", *buff);	
 }
 
-
 int main()
 {
 	int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
