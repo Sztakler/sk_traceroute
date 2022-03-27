@@ -32,7 +32,7 @@ int icmp_send_packets(int sockfd, char *ip_address, int ttl, pid_t pid, uint16_t
     header.icmp_code = 0;
     header.icmp_hun.ih_idseq.icd_id = htons(pid);
 
-    for (int i = 0; i < 1; i++)
+    for (int i = 0; i < 3; i++)
     {
         header.icmp_hun.ih_idseq.icd_seq = htons((*seqnum)++);
         header.icmp_cksum = 0;
@@ -53,8 +53,7 @@ int icmp_send_packets(int sockfd, char *ip_address, int ttl, pid_t pid, uint16_t
             return EXIT_FAILURE;
         }
 
-        printf("\033[38;5;226m[DEBUG]<icmp_send_packets>\
-                \nSending packet [%d] to %s:\
+        DEBUG_PRINT("\n\033[38;5;216mSending packet [%d] to %s:\
                 \n\tttl:        %d\
                 \n\tpid:        %d\
                 \n\tseqnum:     %d\

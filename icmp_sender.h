@@ -11,6 +11,8 @@
 #include <errno.h>
 #include <assert.h>
 
+#include "utils.h"
+
 int icmp_send_packets(int sockfd, char *ip_address, int ttl, pid_t pid, uint16_t *seqnum);
 u_int16_t compute_icmp_checksum(const void *buff, int length);
 

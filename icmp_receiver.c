@@ -6,6 +6,19 @@ void print_as_bytes(unsigned char *buff, ssize_t length)
         printf("%.2x ", *buff);
 }
 
+int parse_data(struct response_t *response, char ip_addresses[3][20], uint32_t times_ms[3])
+{
+    printf("Response\n");
+
+    for (int i = 0; i < 3; i++)
+    {
+        DEBUG_PRINT("\033[38;5;155mIP: %s %d\033[0m\n", ip_addresses[i], times_ms[i]);
+        printf("\033[38;5;155mIP: %s %d\033[0m\n", ip_addresses[i], times_ms[i]);
+    }
+
+    return 0;
+}
+
 int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
 {
     uint16_t seq = 0, id = 0;
@@ -30,14 +43,16 @@ int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
         return 0;
     }
 
-    printf("ICMP:\n\
-\ttype:     %d\n\
+    DEBUG_PRINT("\033[38;5;155m\nICMP:\n\
+\ttype:     %d (%s)\n\
 \tcode:     %d\n\
 \tid:       %d\n\
 \tseqnum:   %d\n\
 \tcksum:    %d\n\
-",
-           icmp_header->icmp_type,
+\033[0m",
+           icmp_header->icmp_type, 
+           icmp_header->icmp_type == ICMP_TIME_EXCEEDED ? "TIME_EXCEEDED" :
+                                        icmp_header->icmp_type == ICMP_ECHOREPLY ? "ECHOREPLY" : "OTHER",
            icmp_header->icmp_code,
            id,
            seq,
@@ -67,7 +82,8 @@ int icmp_receive_packets(int sockfd, pid_t pid, uint16_t seqnum)
     uint32_t response_times_ms[3];
     char response_ips[3][20] = {"", "", ""};
 
-    while (received_packets < 1)
+    // while (received_packets < 3)
+    for (int i = 0; i < 3; i++)
     {
         struct sockaddr_in sender;
         socklen_t sender_len = sizeof(sender);
@@ -83,8 +99,7 @@ int icmp_receive_packets(int sockfd, pid_t pid, uint16_t seqnum)
         // error;
         else if (ready == 0) // timeout
         {
-            printf("\033[38;5;214m[DEBUG]<icmp_receive_packets>\
-            \nReceiving packet[%d]:\
+            DEBUG_PRINT("\033[38;5;155m\n\tReceiving packet[%d]:\
             \n\ttimeout\n\033[0m",
                    i);
             break;
@@ -107,10 +122,9 @@ int icmp_receive_packets(int sockfd, pid_t pid, uint16_t seqnum)
                 return EXIT_FAILURE;
             }
 
-            printf("\033[38;5;214m[DEBUG]<icmp_receive_packets>\
-            \nReceiving packet[%d]:\
-            \n\ttimeout\n\033[0m",
-                   i);
+//             DEBUG_PRINT("\033[38;5;155m\nReceiving packet[%d]:\
+// \n\ttimeout\n\033[0m",
+//                    i);
 
             // Parse sender's IP address to string
             char sender_ip_string[20]; // sender IP string
@@ -125,15 +139,20 @@ int icmp_receive_packets(int sockfd, pid_t pid, uint16_t seqnum)
 
             if (validate_packet(icmp_header, pid, seqnum))
             {
-
                 printf("valid\n");
-                strcpy(response_ips[received_packets], sender_ip_string);
-                response_times_ms[received_packets] = 1000 - (tv.tv_usec / 1000);
-                printf("tv_msec: %ldms\n", 1000 - tv.tv_usec / 1000);
-                received_packets++;
+                DEBUG_PRINT("\033[38;5;155mvalid\n\033[0m");
+                strcpy(response_ips[i], sender_ip_string);
+                response_times_ms[i] = 1000 - (tv.tv_usec / 1000);
+                DEBUG_PRINT("\033[38;5;155mtv_msec: %ldms\n\033[0m", 1000 - tv.tv_usec / 1000);
+                // i++;
             }
-            i++;
+            // i++;
         }
+
+        struct response_t response;
+
+        DEBUG_PRINT("\033[38;5;155msz_ips: %ld sz_times: %ld\n\033[0m", sizeof(response_ips), sizeof(response_times_ms));
+        int parsed_status = parse_data(&response, response_ips, response_times_ms);
     }
 
     return EXIT_SUCCESS;

@@ -11,10 +11,6 @@
 #include "icmp_sender.h"
 #include "icmp_receiver.h"
 
-// struct response {
-//     char[3][20] ip_addrs;
-
-// };
 
 int main(int argc, char *argv[])
 {
@@ -35,7 +31,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    pid_t pid = getpid();
+    pid_t pid = getpid() & 0xFFFF;
     uint16_t seqnum = 0; 
 
     printf("pid: %x\nseqnum: %x\n", pid, seqnum);
