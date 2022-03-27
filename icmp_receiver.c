@@ -6,17 +6,90 @@ void print_as_bytes(unsigned char *buff, ssize_t length)
         printf("%.2x ", *buff);
 }
 
+int check_ips_uniqueness(char ip_addres[20], char ip_addresses[3][20], int n_unique_ips)
+{
+    for (int j = 0; j < n_unique_ips ; j++)
+    {
+        DEBUG_PRINT("\n\
+n:      %d\n\
+j:      %d\n\
+new:    %s\n\
+unique: %s\n",
+            n_unique_ips, j, ip_addres, ip_addresses[j]);
+
+        if (ip_addres[0] == '\0' || strcmp(ip_addres, ip_addresses[j]) == 0)
+        {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+void make_ip_string(char ip_addresses[3][20], char buffer[3 * 20])
+{
+    strcpy(buffer, ip_addresses[0]);
+    for (int i = 1; i < 3; i++)
+    {
+        strcat(buffer, " ");
+        strcat(buffer, ip_addresses[i]);
+    }
+
+    DEBUG_PRINT("buffer: %s\n", buffer);
+}
+
+
+/* Parses response data and populates 'struct response_t response' structure.
+ * Returns 0 if all 3 responses were received, 1 if none were received and 2 otherwise.
+ */
 int parse_data(struct response_t *response, char ip_addresses[3][20], uint32_t times_ms[3])
 {
-    printf("Response\n");
+    // printf("Response\n");
+
+    uint64_t response_time_sum = 0;
+    RESPONSE_TYPE response_type = SUCCESS;
+    int missing_responses = 0;
+
+    char unique_ips[3][20] = {"", "", ""};
+    int n_unique_ips = 0;
+
 
     for (int i = 0; i < 3; i++)
     {
+        DEBUG_PRINT("time_ms: %d\n", times_ms[i]);
+        if (times_ms[i] == 0)
+        {
+            // missing response
+            missing_responses++;
+        }
+
+        if (check_ips_uniqueness(ip_addresses[i], unique_ips, n_unique_ips))
+        {
+            strcpy(unique_ips[i], ip_addresses[i]);
+            n_unique_ips++;
+        }
+
+        response_time_sum += times_ms[i];
+
         DEBUG_PRINT("\033[38;5;155mIP: %s %d\033[0m\n", ip_addresses[i], times_ms[i]);
-        printf("\033[38;5;155mIP: %s %d\033[0m\n", ip_addresses[i], times_ms[i]);
     }
 
-    return 0;
+    make_ip_string(unique_ips, response->ip_addresses);
+    response->avg_time_ms = response_time_sum / 3;
+
+    if (missing_responses == 0)
+    {
+        response->type = SUCCESS;
+        return 0;
+    }
+    if (missing_responses == 3)
+    {
+        response->type = NO_RESPONSE;
+        return 1;
+    }
+
+    response->type = TIMEOUT;
+    return 2;
 }
 
 int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
@@ -66,7 +139,7 @@ int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
     return 0;
 }
 
-int icmp_receive_packets(int sockfd, pid_t pid, uint16_t seqnum)
+int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uint16_t seqnum)
 {
     /* Use select to wait for packet in socket for given time. */
     fd_set descriptors;
@@ -139,7 +212,7 @@ int icmp_receive_packets(int sockfd, pid_t pid, uint16_t seqnum)
 
             if (validate_packet(icmp_header, pid, seqnum))
             {
-                printf("valid\n");
+                // printf("valid\n");
                 DEBUG_PRINT("\033[38;5;155mvalid\n\033[0m");
                 strcpy(response_ips[i], sender_ip_string);
                 response_times_ms[i] = 1000 - (tv.tv_usec / 1000);
@@ -149,11 +222,11 @@ int icmp_receive_packets(int sockfd, pid_t pid, uint16_t seqnum)
             // i++;
         }
 
-        struct response_t response;
 
         DEBUG_PRINT("\033[38;5;155msz_ips: %ld sz_times: %ld\n\033[0m", sizeof(response_ips), sizeof(response_times_ms));
-        int parsed_status = parse_data(&response, response_ips, response_times_ms);
     }
 
+    int parsed_status = parse_data(response, response_ips, response_times_ms);
+    
     return EXIT_SUCCESS;
 }

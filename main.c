@@ -34,15 +34,32 @@ int main(int argc, char *argv[])
     pid_t pid = getpid() & 0xFFFF;
     uint16_t seqnum = 0; 
 
-    printf("pid: %x\nseqnum: %x\n", pid, seqnum);
+    // printf("pid: %x\nseqnum: %x\n", pid, seqnum);
 
-    for (int ttl = 1; ttl <= 1; ttl++)
+    for (int ttl = 1; ttl <= 30; ttl++)
     {
-
+        struct response_t *response;
+        
         if (icmp_send_packets(sockfd, ip_address, ttl, pid, &seqnum) == EXIT_FAILURE)
             return EXIT_FAILURE;
-        if (icmp_receive_packets(sockfd, pid, seqnum) == EXIT_FAILURE)
+        if (icmp_receive_packets(response, sockfd, pid, seqnum) == EXIT_FAILURE)
             return EXIT_FAILURE;
+
+        switch (response->type)
+        {
+            case SUCCESS:
+                printf("[%d] IP: %s %dms\n", ttl, response->ip_addresses, response->avg_time_ms);
+                break;
+            case TIMEOUT:
+                printf("[%d] IP: %s ???ms\n", ttl, response->ip_addresses);
+                break;
+            case NO_RESPONSE:
+                printf("[%d] * * *\n", ttl);
+                break;
+            default:
+                printf("unrecognized state\n");
+                break;
+        }
     }
 
     return EXIT_SUCCESS;
