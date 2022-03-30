@@ -70,7 +70,6 @@ int parse_data(struct response_t *response, char ip_addresses[3][20], uint32_t t
         }
 
         response_time_sum += times_ms[i];
-
         DEBUG_PRINT("\033[38;5;155mIP: %s %d\033[0m\n", ip_addresses[i], times_ms[i]);
     }
 
@@ -133,10 +132,10 @@ int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
 
     if (id == pid && (seq == seqnum || seq == (seqnum - 1) || seq == (seqnum - 2)))
     {
-        return 1;
+        return icmp_header->icmp_type;
     }
 
-    return 0;
+    return -1;
 }
 
 int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uint16_t seqnum)
@@ -154,7 +153,7 @@ int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uin
 
     uint32_t response_times_ms[3];
     char response_ips[3][20] = {"", "", ""};
-
+    int packet_type = -1;
     // while (received_packets < 3)
     for (int i = 0; i < 3; i++)
     {
@@ -166,7 +165,8 @@ int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uin
 
         if (ready < 0)
         {
-            printf("\033[31mselect: %s\n", strerror(errno));
+            // printf("\033[31mselect: %s\n", strerror(errno));
+            perror("\033[31select\033[0m");
             return EXIT_FAILURE;
         }
         // error;
@@ -191,7 +191,8 @@ int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uin
 
             if (packet_len < 0)
             {
-                printf("\033[38;5;196mrecvfrom: %s\n", strerror(errno));
+                perror("\033[recvfrom error\033[0m");
+                // printf("\033[38;5;196mrecvfrom: %s\n", strerror(errno));
                 return EXIT_FAILURE;
             }
 
@@ -209,8 +210,8 @@ int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uin
 
             // printf("icmp_header\n");
             // print_as_bytes((unsigned char*)icmp_header, sizeof(icmp_header));
-
-            if (validate_packet(icmp_header, pid, seqnum))
+            packet_type = validate_packet(icmp_header, pid, seqnum);
+            if (packet_type >= 0)
             {
                 // printf("valid\n");
                 DEBUG_PRINT("\033[38;5;155mvalid\n\033[0m");
@@ -228,5 +229,5 @@ int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uin
 
     int parsed_status = parse_data(response, response_ips, response_times_ms);
     
-    return EXIT_SUCCESS;
+    return packet_type;
 }
