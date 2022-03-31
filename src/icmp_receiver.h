@@ -21,7 +21,7 @@ int check_packet_identity(struct icmp *icmp_header, uint16_t id, uint16_t seq,
                           uint16_t ref_id, uint16_t ref_seq);
 
 struct icmp *get_icmp_header_address_from_ip_header(struct ip *ip_header);
-struct ip *get_ip_header_address_from_icmp(struct icmp* icmp_header);
+struct ip *get_ip_header_address_from_icmp(struct icmp *icmp_header);
 
 void print_as_bytes(unsigned char *buff, ssize_t length);
 

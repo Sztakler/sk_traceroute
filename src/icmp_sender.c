@@ -19,7 +19,6 @@ int icmp_send_packets(int sockfd, char *ip_address, int ttl, uint16_t id, uint16
 
     for (int i = 0; i < 3; i++)
     {
-        DEBUG_PRINT("id: %d seq: %d\n", id, *seqnum);
         icmp_configure_packet_seqnum(&header, seqnum);
         icmp_configure_packet_chksum(&header, 0);
         /* Send packets. */
@@ -37,7 +36,7 @@ int icmp_send_packets(int sockfd, char *ip_address, int ttl, uint16_t id, uint16
             return EXIT_FAILURE;
         }
     }
-    
+
     return EXIT_SUCCESS;
 }
 
@@ -52,7 +51,7 @@ u_int16_t compute_icmp_checksum(const void *buff, int length)
     return (u_int16_t)(~(sum + (sum >> 16)));
 }
 
-void icmp_configure_sockaddr(struct sockaddr_in *socket_address, char* ip_address)
+void icmp_configure_sockaddr(struct sockaddr_in *socket_address, char *ip_address)
 {
     bzero(socket_address, sizeof(*socket_address));
     socket_address->sin_family = AF_INET;
