@@ -5,6 +5,86 @@ Numer indeksu:   317806
 
 #include "icmp_receiver.h"
 
+int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uint16_t seqnum)
+{
+    /* Use select to wait for packet in socket for given time. */
+    fd_set descriptors;
+    FD_ZERO(&descriptors);
+    FD_SET(sockfd, &descriptors);
+    struct timeval tv;
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+
+    int received_packets = 0;
+
+    uint32_t response_times_ms[3];
+    char response_ips[3][20] = {"", "", ""};
+    int packet_type = -1;
+
+    int i = 0; // Number of received packets. 
+    /* We will loop, until we receive 3 packets or select will timeout.
+     * Solves issue with not receving packets when more than one instance
+     * of sk_traceroute is running at given time. 
+     * Invalid packets are ignored.
+     */
+    while (i < 3)
+    // for (int i = 0; i < 3; i++)
+    {
+        struct sockaddr_in sender;
+        socklen_t sender_len = sizeof(sender);
+        uint8_t buffer[IP_MAXPACKET];
+
+        int ready = select(sockfd + 1, &descriptors, NULL, NULL, &tv);
+
+        if (ready < 0)
+        {
+            perror("\033[31select\033[0m");
+            return EXIT_FAILURE;
+        }
+        else if (ready == 0) // timeout
+        {
+            break;
+        }
+        else // Select observed 'ready' descriptors that are ready to read
+        {
+            /* Receive packet from socket. */
+            ssize_t packet_len = recvfrom(
+                sockfd,       // file descriptor of socket
+                buffer,       // pointer to buffer
+                IP_MAXPACKET, // size of buffer
+                0,
+                (struct sockaddr *)&sender, // sender info
+                &sender_len                 // sender info
+            );
+
+            if (packet_len < 0)
+            {
+                perror("\033[recvfrom error\033[0m");
+                return EXIT_FAILURE;
+            }
+
+            // Parse sender's IP address to string
+            char sender_ip_string[20]; // sender IP string
+            inet_ntop(AF_INET, &(sender.sin_addr), sender_ip_string, sizeof(sender_ip_string));
+
+            struct ip *ip_header = (struct ip *)buffer;
+            struct icmp *icmp_header = get_icmp_header_address_from_ip_header(ip_header);
+
+            packet_type = validate_packet(icmp_header, pid, seqnum);
+            if (packet_type >= 0)
+            {
+                strcpy(response_ips[i], sender_ip_string);
+                response_times_ms[i] = 1000 - (tv.tv_usec / 1000);
+                i++;
+            }
+        }
+    }
+
+    int parsed_status = parse_data(response, response_ips, response_times_ms);
+
+    return packet_type;
+}
+
 void print_as_bytes(unsigned char *buff, ssize_t length)
 {
     for (ssize_t i = 0; i < length; i++, buff++)
@@ -82,7 +162,7 @@ int parse_data(struct response_t *response, char ip_addresses[3][20], uint32_t t
     return 2;
 }
 
-struct icmp *get_icmp_header_address(struct ip *ip_header)
+struct icmp *get_icmp_header_address_from_ip_header(struct ip *ip_header)
 {
     ssize_t ip_header_len = 4 * ip_header->ip_hl;
     return (struct icmp *)((void *)ip_header + ip_header_len);
@@ -115,96 +195,14 @@ int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
     {
         // Based on https://datatracker.ietf.org/doc/html/rfc792 [page 6]
         struct ip *echo_ip_header = get_ip_header_address_from_icmp(icmp_header);
-        struct icmp *echo_icmp_header = get_icmp_header_address(echo_ip_header);
+        struct icmp *echo_icmp_header = get_icmp_header_address_from_ip_header(echo_ip_header);
 
         seq = ntohs(echo_icmp_header->icmp_hun.ih_idseq.icd_seq);
         id = ntohs(echo_icmp_header->icmp_hun.ih_idseq.icd_id);
     }
     else
     {
-        DEBUG_PRINT("returned -1\n");
         return -1;
     }
-    DEBUG_PRINT("id: %d seq: %d\n", id, seq);
-    DEBUG_PRINT("returned %d\n",  check_packet_identity(icmp_header, id, seq, pid, seqnum));
     return check_packet_identity(icmp_header, id, seq, pid, seqnum);
-}
-
-int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uint16_t seqnum)
-{
-    /* Use select to wait for packet in socket for given time. */
-    fd_set descriptors;
-    FD_ZERO(&descriptors);
-    FD_SET(sockfd, &descriptors);
-    struct timeval tv;
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
-
-    int received_packets = 0;
-
-    uint32_t response_times_ms[3];
-    char response_ips[3][20] = {"", "", ""};
-    int packet_type = -1;
-
-    int i = 0; // Number of received packets. 
-               // We will loop, until we receive 3 packets or select will timeout.
-    while (i < 3)
-    // for (int i = 0; i < 3; i++)
-    {
-        struct sockaddr_in sender;
-        socklen_t sender_len = sizeof(sender);
-        uint8_t buffer[IP_MAXPACKET];
-
-        int ready = select(sockfd + 1, &descriptors, NULL, NULL, &tv);
-
-        if (ready < 0)
-        {
-            perror("\033[31select\033[0m");
-            return EXIT_FAILURE;
-        }
-        else if (ready == 0) // timeout
-        {
-            break;
-        }
-        else // select observed 'ready' descriptors ready to read
-        {
-            /* Receive packet from socket. */
-            ssize_t packet_len = recvfrom(
-                sockfd,       // file descriptor of socket
-                buffer,       // pointer to buffer
-                IP_MAXPACKET, // size of buffer
-                0,
-                (struct sockaddr *)&sender, // sender info
-                &sender_len                 // sender info
-            );
-
-            if (packet_len < 0)
-            {
-                perror("\033[recvfrom error\033[0m");
-                return EXIT_FAILURE;
-            }
-
-            // Parse sender's IP address to string
-            char sender_ip_string[20]; // sender IP string
-            inet_ntop(AF_INET, &(sender.sin_addr), sender_ip_string, sizeof(sender_ip_string));
-
-            struct ip *ip_header = (struct ip *)buffer;
-            // ssize_t ip_header_len = 4 * ip_header->ip_hl;
-            // struct icmp *icmp_header = (struct icmp *)(buffer + ip_header_len);
-
-            struct icmp *icmp_header = get_icmp_header_address(ip_header);
-
-            packet_type = validate_packet(icmp_header, pid, seqnum);
-            if (packet_type >= 0)
-            {
-                strcpy(response_ips[i], sender_ip_string);
-                response_times_ms[i] = 1000 - (tv.tv_usec / 1000);
-                i++;
-            }
-        }
-    }
-
-    int parsed_status = parse_data(response, response_ips, response_times_ms);
-
-    return packet_type;
 }

@@ -16,7 +16,6 @@ Numer indeksu:   317806
 #include "icmp_sender.h"
 #include "icmp_receiver.h"
 
-
 int main(int argc, char *argv[])
 {
     /* Check program's input. */
@@ -36,14 +35,19 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    uint16_t pid    = getpid() & 0x0000FFFF;
-    uint16_t seqnum = (getpid() & 0xFFFF0000) >> 16; 
- 
+    /*
+     * We use PID as packet id, but it is a 32-bit integer, so to ensure that id will be unique,
+     * we will split it into two halves and store each in 'pid' and 'seqnum' variables.
+     * 'seqnum' will be incremented at every ttl's increment.
+     */
+    uint16_t pid = getpid() & 0x0000FFFF;
+    uint16_t seqnum = (getpid() & 0xFFFF0000) >> 16;
+
     struct sockaddr_in sender;
-    socklen_t length = sizeof(sender);   
+    socklen_t length = sizeof(sender);
 
     for (int ttl = 1; ttl <= 30; ttl++)
-    {   
+    {
         if (icmp_send_packets(sockfd, ip_address, ttl, pid, &seqnum) == EXIT_FAILURE)
             return EXIT_FAILURE;
 
@@ -54,18 +58,18 @@ int main(int argc, char *argv[])
 
         switch (response.type)
         {
-            case SUCCESS:
-                printf("[%d] IP: %s %dms\n", ttl, response.ip_addresses, response.avg_time_ms);
-                break;
-            case TIMEOUT:
-                printf("[%d] IP: %s ???ms\n", ttl, response.ip_addresses);
-                break;
-            case NO_RESPONSE:
-                printf("[%d] * * *\n", ttl);
-                break;
-            default:
-                printf("unrecognized state\n");
-                break;
+        case SUCCESS:
+            printf("[%d] IP: %s %dms\n", ttl, response.ip_addresses, response.avg_time_ms);
+            break;
+        case TIMEOUT:
+            printf("[%d] IP: %s ???ms\n", ttl, response.ip_addresses);
+            break;
+        case NO_RESPONSE:
+            printf("[%d] * * *\n", ttl);
+            break;
+        default:
+            printf("unrecognized state\n");
+            break;
         }
 
         if (packet_type == ICMP_ECHOREPLY)

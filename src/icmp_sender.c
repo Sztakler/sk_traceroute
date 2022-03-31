@@ -5,6 +5,42 @@ Numer indeksu:   317806
 
 #include "icmp_sender.h"
 
+int icmp_send_packets(int sockfd, char *ip_address, int ttl, uint16_t id, uint16_t *seqnum)
+{
+    /* Configure sockaddr_in structure for this particular recipient. */
+    struct sockaddr_in recipient;
+    icmp_configure_sockaddr(&recipient, ip_address);
+
+    set_ttl(sockfd, ttl);
+
+    /* Configure ICMP packet. */
+    struct icmp header;
+    icmp_configure_packet_base(&header, id);
+
+    for (int i = 0; i < 3; i++)
+    {
+        DEBUG_PRINT("id: %d seq: %d\n", id, *seqnum);
+        icmp_configure_packet_seqnum(&header, seqnum);
+        icmp_configure_packet_chksum(&header, 0);
+        /* Send packets. */
+        ssize_t bytes_sent = sendto(
+            sockfd,
+            &header,
+            sizeof(header),
+            0,
+            (struct sockaddr *)&recipient,
+            sizeof(recipient));
+
+        if (bytes_sent < 0)
+        {
+            perror("\033[31sendto() error\033[0m");
+            return EXIT_FAILURE;
+        }
+    }
+    
+    return EXIT_SUCCESS;
+}
+
 u_int16_t compute_icmp_checksum(const void *buff, int length)
 {
     u_int32_t sum;
@@ -48,40 +84,4 @@ void icmp_configure_packet_chksum(struct icmp *header, int chksum)
 {
     header->icmp_cksum = chksum;
     header->icmp_cksum = compute_icmp_checksum((uint16_t *)header, sizeof(*header));
-}
-
-int icmp_send_packets(int sockfd, char *ip_address, int ttl, uint16_t id, uint16_t *seqnum)
-{
-    /* Configure sockaddr_in structure for this particular recipient. */
-    struct sockaddr_in recipient;
-    icmp_configure_sockaddr(&recipient, ip_address);
-
-    set_ttl(sockfd, ttl);
-
-    /* Configure ICMP packet. */
-    struct icmp header;
-    icmp_configure_packet_base(&header, id);
-
-    for (int i = 0; i < 3; i++)
-    {
-        DEBUG_PRINT("id: %d seq: %d\n", id, *seqnum);
-        icmp_configure_packet_seqnum(&header, seqnum);
-        icmp_configure_packet_chksum(&header, 0);
-        /* Send packets. */
-        ssize_t bytes_sent = sendto(
-            sockfd,
-            &header,
-            sizeof(header),
-            0,
-            (struct sockaddr *)&recipient,
-            sizeof(recipient));
-
-        if (bytes_sent < 0)
-        {
-            perror("\033[31sendto() error\033[0m");
-            return EXIT_FAILURE;
-        }
-    }
-    
-    return EXIT_SUCCESS;
 }
