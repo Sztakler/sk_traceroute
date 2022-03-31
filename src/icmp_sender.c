@@ -1,3 +1,8 @@
+/*
+Imię i nazwisko: Krystian Jasionek
+Numer indeksu:   317806
+*/
+
 #include "icmp_sender.h"
 
 u_int16_t compute_icmp_checksum(const void *buff, int length)

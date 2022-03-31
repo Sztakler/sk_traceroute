@@ -1,3 +1,8 @@
+/*
+Imię i nazwisko: Krystian Jasionek
+Numer indeksu:   317806
+*/
+
 #include "icmp_receiver.h"
 
 void print_as_bytes(unsigned char *buff, ssize_t length)

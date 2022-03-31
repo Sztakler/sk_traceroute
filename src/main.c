@@ -1,3 +1,8 @@
+/*
+Imię i nazwisko: Krystian Jasionek
+Numer indeksu:   317806
+*/
+
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 #include <unistd.h>
