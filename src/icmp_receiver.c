@@ -77,7 +77,7 @@ int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uin
             packet_type = validate_packet(icmp_header, pid, seqnum);
             if (packet_type >= 0)
             {
-                ststrcpy(response_ips[i], sender_ip_string);
+                strcpy(response_ips[i], sender_ip_string);
                 response_times_ms[i] = 1000 - (tv.tv_usec / 1000);
                 i++;
             }
