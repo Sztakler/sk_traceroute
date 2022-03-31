@@ -27,6 +27,5 @@ $(OBJ_PATH)%.o: $(SRC_PATH)%.c $(SRC_PATH)%.h
 clean:
 	rm -rf $(OBJ_DIR)
 
-distclean:
-	@$(clean)
+distclean: clean
 	rm $(NAME)
