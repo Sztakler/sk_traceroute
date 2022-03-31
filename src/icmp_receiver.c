@@ -13,7 +13,7 @@ void print_as_bytes(unsigned char *buff, ssize_t length)
 
 int check_ips_uniqueness(char ip_addres[20], char ip_addresses[3][20], int n_unique_ips)
 {
-    for (int j = 0; j < n_unique_ips ; j++)
+    for (int j = 0; j < n_unique_ips; j++)
     {
         if (ip_addres[0] == '\0' || strcmp(ip_addres, ip_addresses[j]) == 0)
         {
@@ -35,7 +35,6 @@ void make_ip_string(char ip_addresses[3][20], char buffer[100])
         strcat(buffer, ip_addresses[i]);
     }
 }
-
 
 /* Parses response data and populates 'struct response_t response' structure.
  * Returns 0 if all 3 responses were received, 1 if none were received and 2 otherwise.
@@ -89,6 +88,13 @@ struct icmp *get_icmp_header_address(struct ip *ip_header)
     return (struct icmp *)((void *)ip_header + ip_header_len);
 }
 
+uint8_t check_packet_identity(struct icmp *icmp_header, uint16_t id, uint16_t seq,
+                          uint16_t ref_id, uint16_t ref_seq)
+{
+    if (id == ref_id && (seq == (ref_seq - 1) || seq == (ref_seq - 2) || seq == (ref_seq - 3)))
+        return icmp_header->icmp_type;
+}
+
 int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
 {
     uint16_t seq = 0, id = 0;
@@ -104,7 +110,7 @@ int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
         struct ip *echo_ip_header = (struct ip *)((void *)icmp_header + sizeof(struct icmphdr));
         // ssize_t echo_ip_header_len = 4 * echo_ip_header->ip_hl;
         // struct icmp *echo_icmp_header = (struct icmp *)((void *)echo_ip_header + echo_ip_header_len);
-        struct icmp *echo_icmp_header = get_icmp_header_address(echo_ip_header); 
+        struct icmp *echo_icmp_header = get_icmp_header_address(echo_ip_header);
 
         seq = ntohs(echo_icmp_header->icmp_hun.ih_idseq.icd_seq);
         id = ntohs(echo_icmp_header->icmp_hun.ih_idseq.icd_id);
@@ -113,11 +119,9 @@ int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
     {
         return -1;
     }
-    
-    if (id == pid && (seq == (seqnum - 1) || seq == (seqnum - 2) || seq == (seqnum - 3)))
-    {
-        return icmp_header->icmp_type;
-    }
+
+    return check_packet_identity(icmp_header, id, seq, pid, seqnum);
+
 
     return -1;
 }
@@ -192,6 +196,6 @@ int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uin
     }
 
     int parsed_status = parse_data(response, response_ips, response_times_ms);
-    
+
     return packet_type;
 }
