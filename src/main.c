@@ -40,18 +40,10 @@ int main(int argc, char *argv[])
     uint16_t seqnum = getpid() & 0xFFFF0000; 
  
     struct sockaddr_in sender;
-    socklen_t length = sizeof(sender);  
-    // int rc = bind(sockfd, (struct sockaddr*)&sender, length);
-
-    // if (rc < 0)
-    // {
-    //     perror("bind()");
-    //     exit(EXIT_FAILURE);
-    // }    
+    socklen_t length = sizeof(sender);   
 
     for (int ttl = 1; ttl <= 30; ttl++)
     {
-        DEBUG_PRINT("Packet [%d]\n", ttl);
         struct response_t response;
         
         if (icmp_send_packets(sockfd, ip_address, ttl, pid, &seqnum) == EXIT_FAILURE)
@@ -76,7 +68,6 @@ int main(int argc, char *argv[])
                 printf("unrecognized state\n");
                 break;
         }
-        DEBUG_PRINT("\n\n");
 
         if (packet_type == ICMP_ECHOREPLY)
             break;

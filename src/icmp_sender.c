@@ -81,22 +81,7 @@ int icmp_send_packets(int sockfd, char *ip_address, int ttl, uint16_t id, uint16
             perror("\033[31sendto() error\033[0m");
             return EXIT_FAILURE;
         }
-
-        DEBUG_PRINT("\n\033[38;5;216mSending packet [%d] to %s:\
-                \n\tttl:        %d\
-                \n\tid:        %d\
-                \n\tseqnum:     %d\
-                \n\tchksum:     %d\
-                \n\tbytes_sent: %ld\n\033[0m",
-            i,
-            ip_address,
-            ttl,
-            id,
-            *seqnum-1,
-            header.icmp_cksum,
-            bytes_sent);
     }
     
-
     return EXIT_SUCCESS;
 }
