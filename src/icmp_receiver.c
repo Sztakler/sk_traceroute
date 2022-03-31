@@ -88,11 +88,18 @@ struct icmp *get_icmp_header_address(struct ip *ip_header)
     return (struct icmp *)((void *)ip_header + ip_header_len);
 }
 
-uint8_t check_packet_identity(struct icmp *icmp_header, uint16_t id, uint16_t seq,
+struct ip *get_ip_header_address_from_icmp(struct icmp* icmp_header)
+{
+    return (struct ip *)((void *)icmp_header + sizeof(struct icmphdr));
+}
+
+int check_packet_identity(struct icmp *icmp_header, uint16_t id, uint16_t seq,
                           uint16_t ref_id, uint16_t ref_seq)
 {
     if (id == ref_id && (seq == (ref_seq - 1) || seq == (ref_seq - 2) || seq == (ref_seq - 3)))
         return icmp_header->icmp_type;
+    
+    return -1;
 }
 
 int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
@@ -107,9 +114,7 @@ int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
     else if (icmp_header->icmp_type == ICMP_TIME_EXCEEDED)
     {
         // Based on https://datatracker.ietf.org/doc/html/rfc792 [page 6]
-        struct ip *echo_ip_header = (struct ip *)((void *)icmp_header + sizeof(struct icmphdr));
-        // ssize_t echo_ip_header_len = 4 * echo_ip_header->ip_hl;
-        // struct icmp *echo_icmp_header = (struct icmp *)((void *)echo_ip_header + echo_ip_header_len);
+        struct ip *echo_ip_header = get_ip_header_address_from_icmp(icmp_header);
         struct icmp *echo_icmp_header = get_icmp_header_address(echo_ip_header);
 
         seq = ntohs(echo_icmp_header->icmp_hun.ih_idseq.icd_seq);
@@ -117,13 +122,12 @@ int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
     }
     else
     {
+        DEBUG_PRINT("returned -1\n");
         return -1;
     }
-
+    DEBUG_PRINT("id: %d seq: %d\n", id, seq);
+    DEBUG_PRINT("returned %d\n",  check_packet_identity(icmp_header, id, seq, pid, seqnum));
     return check_packet_identity(icmp_header, id, seq, pid, seqnum);
-
-
-    return -1;
 }
 
 int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uint16_t seqnum)
@@ -137,13 +141,15 @@ int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uin
     tv.tv_usec = 0;
 
     int received_packets = 0;
-    int i = 0;
 
     uint32_t response_times_ms[3];
     char response_ips[3][20] = {"", "", ""};
     int packet_type = -1;
 
-    for (int i = 0; i < 3; i++)
+    int i = 0; // Number of received packets. 
+               // We will loop, until we receive 3 packets or select will timeout.
+    while (i < 3)
+    // for (int i = 0; i < 3; i++)
     {
         struct sockaddr_in sender;
         socklen_t sender_len = sizeof(sender);
@@ -183,14 +189,17 @@ int icmp_receive_packets(struct response_t *response, int sockfd, pid_t pid, uin
             inet_ntop(AF_INET, &(sender.sin_addr), sender_ip_string, sizeof(sender_ip_string));
 
             struct ip *ip_header = (struct ip *)buffer;
-            ssize_t ip_header_len = 4 * ip_header->ip_hl;
-            struct icmp *icmp_header = (struct icmp *)(buffer + ip_header_len);
+            // ssize_t ip_header_len = 4 * ip_header->ip_hl;
+            // struct icmp *icmp_header = (struct icmp *)(buffer + ip_header_len);
+
+            struct icmp *icmp_header = get_icmp_header_address(ip_header);
 
             packet_type = validate_packet(icmp_header, pid, seqnum);
             if (packet_type >= 0)
             {
                 strcpy(response_ips[i], sender_ip_string);
                 response_times_ms[i] = 1000 - (tv.tv_usec / 1000);
+                i++;
             }
         }
     }

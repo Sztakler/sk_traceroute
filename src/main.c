@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
     }
 
     uint16_t pid    = getpid() & 0x0000FFFF;
-    uint16_t seqnum = getpid() & 0xFFFF0000; 
+    uint16_t seqnum = (getpid() & 0xFFFF0000) >> 16; 
  
     struct sockaddr_in sender;
     socklen_t length = sizeof(sender);   

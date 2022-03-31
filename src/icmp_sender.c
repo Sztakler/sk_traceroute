@@ -64,9 +64,9 @@ int icmp_send_packets(int sockfd, char *ip_address, int ttl, uint16_t id, uint16
 
     for (int i = 0; i < 3; i++)
     {
+        DEBUG_PRINT("id: %d seq: %d\n", id, *seqnum);
         icmp_configure_packet_seqnum(&header, seqnum);
         icmp_configure_packet_chksum(&header, 0);
-
         /* Send packets. */
         ssize_t bytes_sent = sendto(
             sockfd,
