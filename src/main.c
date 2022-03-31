@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     if (argc < 2)
     {
         printf("\033[31mInvalid argument! Usage: %s [IP address].\033[0m\n", argv[0]);
-        exit(EXIT_FAILURE);
+        return EXIT_FAILURE;
     }
 
     char *ip_address = argv[1];
@@ -43,14 +43,13 @@ int main(int argc, char *argv[])
     socklen_t length = sizeof(sender);   
 
     for (int ttl = 1; ttl <= 30; ttl++)
-    {
-        struct response_t response;
-        
+    {   
         if (icmp_send_packets(sockfd, ip_address, ttl, pid, &seqnum) == EXIT_FAILURE)
             return EXIT_FAILURE;
 
-        int packet_type = icmp_receive_packets(&response, sockfd, pid, seqnum);
-        if (packet_type == EXIT_FAILURE)
+        struct response_t response;
+        int packet_type;
+        if ((packet_type = icmp_receive_packets(&response, sockfd, pid, seqnum)) == EXIT_FAILURE)
             return EXIT_FAILURE;
 
         switch (response.type)

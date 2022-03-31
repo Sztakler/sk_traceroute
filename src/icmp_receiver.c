@@ -83,7 +83,11 @@ int parse_data(struct response_t *response, char ip_addresses[3][20], uint32_t t
     return 2;
 }
 
-
+struct icmp *get_icmp_header_address(struct ip *ip_header)
+{
+    ssize_t ip_header_len = 4 * ip_header->ip_hl;
+    return (struct icmp *)((void *)ip_header + ip_header_len);
+}
 
 int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
 {
@@ -98,8 +102,9 @@ int validate_packet(struct icmp *icmp_header, pid_t pid, uint16_t seqnum)
     {
         // Based on https://datatracker.ietf.org/doc/html/rfc792 [page 6]
         struct ip *echo_ip_header = (struct ip *)((void *)icmp_header + sizeof(struct icmphdr));
-        ssize_t echo_ip_header_len = 4 * echo_ip_header->ip_hl;
-        struct icmp *echo_icmp_header = (struct icmp *)((void *)echo_ip_header + echo_ip_header_len);
+        // ssize_t echo_ip_header_len = 4 * echo_ip_header->ip_hl;
+        // struct icmp *echo_icmp_header = (struct icmp *)((void *)echo_ip_header + echo_ip_header_len);
+        struct icmp *echo_icmp_header = get_icmp_header_address(echo_ip_header); 
 
         seq = ntohs(echo_icmp_header->icmp_hun.ih_idseq.icd_seq);
         id = ntohs(echo_icmp_header->icmp_hun.ih_idseq.icd_id);
