@@ -19,7 +19,7 @@ typedef enum RESPONSE_TYPE
 
 struct response_t
 {
-    char ip_addresses[3 * 20];
+    char ip_addresses[100];
     RESPONSE_TYPE type;
     int avg_time_ms;
 };

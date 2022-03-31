@@ -1,7 +1,7 @@
 GPP = gcc
 NAME =  sk_traceroute
 DEBUG_FLAGS =  -std=c17 -Wall -Wextra -I.
-LINKER_FLAGS = #-lGLEW  -lGL -lglfw
+LINKER_FLAGS = -Wall
 OBJ_DIR = obj
 SRC_DIR = src
 OBJ = $(OBJ_DIR)/main.o \
@@ -26,4 +26,7 @@ $(OBJ_PATH)%.o: $(SRC_PATH)%.c $(SRC_PATH)%.h
 
 clean:
 	rm -rf $(OBJ_DIR)
+
+distclean:
+	@$(clean)
 	rm $(NAME)

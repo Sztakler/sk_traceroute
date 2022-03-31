@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
     if (argc < 2)
     {
         printf("\033[31mInvalid argument! Usage: %s [IP address].\033[0m\n", argv[0]);
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     char *ip_address = argv[1];
@@ -27,48 +27,42 @@ int main(int argc, char *argv[])
     int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     if (sockfd < 0)
     {
-        printf("socket error: %s\n", strerror(errno));
+        perror("\033[31socket\033[0m");
         return EXIT_FAILURE;
     }
 
     uint16_t pid    = getpid() & 0x0000FFFF;
     uint16_t seqnum = getpid() & 0xFFFF0000; 
+ 
+    struct sockaddr_in sender;
+    socklen_t length = sizeof(sender);  
+    // int rc = bind(sockfd, (struct sockaddr*)&sender, length);
 
-/*
-    struct sockaddr_in local;
-    memset(&local, 0, sizeof(local));
-    local.sin_family = AF_INET;
-    inet_pton(AF_INET, ip_address, &local.sin_addr);
-
-
-    int rc = bind(sockfd, (struct sockaddr*)&local, sizeof(local));
-    if (rc == -1)
-    {
-        fprintf(stderr, "bind() failed: %s\n", strerror(errno));
-    }
-    else
-        printf("Bind successfull\n");
-*/
+    // if (rc < 0)
+    // {
+    //     perror("bind()");
+    //     exit(EXIT_FAILURE);
+    // }    
 
     for (int ttl = 1; ttl <= 30; ttl++)
     {
         DEBUG_PRINT("Packet [%d]\n", ttl);
-        struct response_t *response;
+        struct response_t response;
         
         if (icmp_send_packets(sockfd, ip_address, ttl, pid, &seqnum) == EXIT_FAILURE)
             return EXIT_FAILURE;
 
-        int packet_type = icmp_receive_packets(response, sockfd, pid, seqnum);
+        int packet_type = icmp_receive_packets(&response, sockfd, pid, seqnum);
         if (packet_type == EXIT_FAILURE)
             return EXIT_FAILURE;
 
-        switch (response->type)
+        switch (response.type)
         {
             case SUCCESS:
-                printf("[%d] IP: %s %dms\n", ttl, response->ip_addresses, response->avg_time_ms);
+                printf("[%d] IP: %s %dms\n", ttl, response.ip_addresses, response.avg_time_ms);
                 break;
             case TIMEOUT:
-                printf("[%d] IP: %s ???ms\n", ttl, response->ip_addresses);
+                printf("[%d] IP: %s ???ms\n", ttl, response.ip_addresses);
                 break;
             case NO_RESPONSE:
                 printf("[%d] * * *\n", ttl);

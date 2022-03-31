@@ -23,7 +23,6 @@ void set_ttl(int sockfd, int ttl)
     if (setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(int)) < 0)
     {
         perror("\033[31setsockopt() error\033[0m");
-        // printf("setsockopt: %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 }
@@ -51,39 +50,16 @@ int icmp_send_packets(int sockfd, char *ip_address, int ttl, uint16_t id, uint16
     /* Configure sockaddr_in structure for this particular recipient. */
     struct sockaddr_in recipient;
     icmp_configure_sockaddr(&recipient, ip_address);
-    // bzero(&recipient, sizeof(recipient));
-    // recipient.sin_family = AF_INET;
-    // inet_pton(AF_INET, ip_address, &recipient.sin_addr);
 
-    // /* Bind socket. */
-    // int rc = bind(sockfd, (struct sockaddr *)&recipient, sizeof(recipient));
-    // if (rc < 0) {
-    //     perror("\033[31mbind() error\033[0m");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    /* Set correct TTL in socket options. */
-    // if (setsockopt(sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(int)) < 0)
-    // {
-    //     printf("setsockopt: %s\n", strerror(errno));
-    //     return EXIT_FAILURE;
-    // }
     set_ttl(sockfd, ttl);
 
     /* Configure ICMP packet. */
     struct icmp header;
-    // header.icmp_type = ICMP_ECHO;
-    // header.icmp_code = 0;
-    // header.icmp_hun.ih_idseq.icd_id = htons(id);
     icmp_configure_packet_base(&header, id);
-
 
     for (int i = 0; i < 3; i++)
     {
-        // header.icmp_hun.ih_idseq.icd_seq = htons((*seqnum)++);
         icmp_configure_packet_seqnum(&header, seqnum);
-        // header.icmp_cksum = 0;
-        // header.icmp_cksum = compute_icmp_checksum((uint16_t *)&header, sizeof(header));
         icmp_configure_packet_chksum(&header, 0);
 
         /* Send packets. */
@@ -98,20 +74,19 @@ int icmp_send_packets(int sockfd, char *ip_address, int ttl, uint16_t id, uint16
         if (bytes_sent < 0)
         {
             perror("\033[31sendto() error\033[0m");
-            // printf("\033[31msendto: %s\n", strerror(errno));
             return EXIT_FAILURE;
         }
 
         DEBUG_PRINT("\n\033[38;5;216mSending packet [%d] to %s:\
                 \n\tttl:        %d\
-                \n\tpid:        %d\
+                \n\tid:        %d\
                 \n\tseqnum:     %d\
                 \n\tchksum:     %d\
                 \n\tbytes_sent: %ld\n\033[0m",
             i,
             ip_address,
             ttl,
-            pid,
+            id,
             *seqnum-1,
             header.icmp_cksum,
             bytes_sent);
